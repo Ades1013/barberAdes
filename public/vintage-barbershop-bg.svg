@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 800" width="500" height="800">
+  <defs>
+    <!-- Ribbon Arcs -->
+    <path id="top-ribbon-arc" d="M 80,140 Q 250,90 420,140" fill="none" />
+    <path id="bottom-ribbon-arc" d="M 120,705 Q 250,735 380,705" fill="none" />
+  </defs>
+
+  <!-- Distressed Vintage Background Plate -->
+  <rect width="500" height="800" fill="#000000" />
+
+  <!-- Outer Double Framing & Corner Ornaments -->
+  <rect x="14" y="14" width="472" height="772" rx="4" fill="none" stroke="#FFFFFF" stroke-width="3" />
+  <rect x="22" y="22" width="456" height="756" rx="2" fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-dasharray="4,3" />
+
+  <!-- Corner Flourishes -->
+  <path d="M 16,16 L 36,16 L 36,36 L 16,36 Z" fill="none" stroke="#FFFFFF" stroke-width="1.5" />
+  <path d="M 484,16 L 464,16 L 464,36 L 484,36 Z" fill="none" stroke="#FFFFFF" stroke-width="1.5" />
+  <path d="M 16,784 L 36,784 L 36,764 L 16,764 Z" fill="none" stroke="#FFFFFF" stroke-width="1.5" />
+  <path d="M 484,784 L 464,784 L 464,764 L 484,764 Z" fill="none" stroke="#FFFFFF" stroke-width="1.5" />
+
+  <!-- TOP-LEFT: Mini Skull with Pompadour & Beard -->
+  <g transform="translate(30, 36) scale(0.65)" stroke="#FFFFFF" fill="#FFFFFF">
+    <path d="M 28,15 C 22,2 45,0 52,6 C 58,1 78,5 72,18 C 76,22 74,30 68,34 C 68,44 60,54 50,56 C 40,54 32,44 32,34 Z" fill="#000000" stroke-width="2" />
+    <circle cx="42" cy="30" r="4" fill="#FFFFFF" />
+    <circle cx="58" cy="30" r="4" fill="#FFFFFF" />
+    <path d="M 36,44 C 44,48 56,48 64,44 C 62,56 50,68 50,68 C 50,68 38,56 36,44 Z" fill="#FFFFFF" stroke-width="1" />
+  </g>
+
+  <!-- TOP-RIGHT: Vintage Hair Clipper Machine -->
+  <g transform="translate(420, 36) scale(0.7)" stroke="#FFFFFF" fill="none" stroke-width="2">
+    <!-- Clipper Blade Head -->
+    <rect x="15" y="10" width="30" height="8" rx="1" fill="#FFFFFF" />
+    <line x1="18" y1="10" x2="18" y2="18" stroke="#000000" />
+    <line x1="22" y1="10" x2="22" y2="22" stroke="#000000" />
+    <line x1="26" y1="10" x2="26" y2="22" stroke="#000000" />
+    <line x1="30" y1="10" x2="30" y2="22" stroke="#000000" />
+    <line x1="34" y1="10" x2="34" y2="22" stroke="#000000" />
+    <line x1="38" y1="10" x2="38" y2="22" stroke="#000000" />
+    <line x1="42" y1="10" x2="42" y2="18" stroke="#000000" />
+    <!-- Clipper Body -->
+    <path d="M 18,18 C 15,35 16,65 22,80 L 38,80 C 44,65 45,35 42,18 Z" fill="#000000" stroke-width="2.5" />
+    <circle cx="30" cy="45" r="7" stroke-width="1.5" />
+    <!-- Power Cord Loop -->
+    <path d="M 30,80 C 30,92 20,95 24,105 C 28,115 36,110 32,120" stroke-width="2" />
+  </g>
+
+  <!-- TOP RIBBON: BARBERSHOP -->
+  <g stroke="#FFFFFF">
+    <!-- Ribbon Banner Background -->
+    <path d="M 60,135 Q 250,75 440,135 L 430,175 Q 250,120 70,175 Z" fill="#FFFFFF" stroke-width="3" />
+    <!-- Ribbon Tail Folds -->
+    <path d="M 60,135 L 35,115 L 45,155 L 70,175 L 55,155 Z" fill="#000000" stroke-width="2" />
+    <path d="M 440,135 L 465,115 L 455,155 L 430,175 L 445,155 Z" fill="#000000" stroke-width="2" />
+  </g>
+  <!-- BARBERSHOP TEXT -->
+  <text font-family="'Times New Roman', Georgia, serif" font-weight="900" font-size="36" letter-spacing="8" fill="#000000" text-anchor="middle">
+    <textPath href="#top-ribbon-arc" startOffset="50%" text-anchor="middle">
+      BARBERSHOP
+    </textPath>
+  </text>
+
+  <!-- SUB-BANNER: SHAVE & HAIRCUT -->
+  <g stroke="#FFFFFF">
+    <path d="M 140,185 Q 250,155 360,185 L 355,212 Q 250,182 145,212 Z" fill="#000000" stroke-width="2" />
+  </g>
+  <text x="250" y="204" font-family="'Impact', 'Arial Black', sans-serif" font-weight="900" font-size="19" letter-spacing="4" fill="#FFFFFF" text-anchor="middle">
+    SHAVE &amp; HAIRCUT
+  </text>
+
+  <!-- SINCE 1969 -->
+  <text x="250" y="235" font-family="'Times New Roman', Georgia, serif" font-weight="bold" font-size="18" letter-spacing="6" fill="#FFFFFF" text-anchor="middle">
+    ★ SINCE 1969 ★
+  </text>
+
+  <!-- LEFT BARBER POLE -->
+  <g transform="translate(45, 300)" stroke="#FFFFFF" fill="none">
+    <!-- Top Glass Globe -->
+    <circle cx="20" cy="15" r="14" fill="#FFFFFF" />
+    <!-- Mount / Caps -->
+    <path d="M 8,28 L 32,28 L 28,38 L 12,38 Z" fill="#FFFFFF" />
+    <!-- Main Cylinder with Stripes -->
+    <rect x="8" y="38" width="24" height="110" rx="3" fill="#000000" stroke-width="2.5" />
+    <clipPath id="left-pole-clip">
+      <rect x="8" y="38" width="24" height="110" rx="3" />
+    </clipPath>
+    <g clip-path="url(#left-pole-clip)" stroke="#FFFFFF" stroke-width="8">
+      <line x1="-5" y1="45" x2="45" y2="75" />
+      <line x1="-5" y1="70" x2="45" y2="100" />
+      <line x1="-5" y1="95" x2="45" y2="125" />
+      <line x1="-5" y1="120" x2="45" y2="150" />
+    </g>
+    <!-- Bottom Mount / Cap -->
+    <path d="M 12,148 L 28,148 L 32,158 L 8,158 Z" fill="#FFFFFF" />
+    <circle cx="20" cy="168" r="8" fill="#FFFFFF" />
+  </g>
+
+  <!-- RIGHT BARBER POLE -->
+  <g transform="translate(395, 300)" stroke="#FFFFFF" fill="none">
+    <!-- Top Glass Globe -->
+    <circle cx="20" cy="15" r="14" fill="#FFFFFF" />
+    <!-- Mount / Caps -->
+    <path d="M 8,28 L 32,28 L 28,38 L 12,38 Z" fill="#FFFFFF" />
+    <!-- Main Cylinder with Stripes -->
+    <rect x="8" y="38" width="24" height="110" rx="3" fill="#000000" stroke-width="2.5" />
+    <clipPath id="right-pole-clip">
+      <rect x="8" y="38" width="24" height="110" rx="3" />
+    </clipPath>
+    <g clip-path="url(#right-pole-clip)" stroke="#FFFFFF" stroke-width="8">
+      <line x1="-5" y1="45" x2="45" y2="75" />
+      <line x1="-5" y1="70" x2="45" y2="100" />
+      <line x1="-5" y1="95" x2="45" y2="125" />
+      <line x1="-5" y1="120" x2="45" y2="150" />
+    </g>
+    <!-- Bottom Mount / Cap -->
+    <path d="M 12,148 L 28,148 L 32,158 L 8,158 Z" fill="#FFFFFF" />
+    <circle cx="20" cy="168" r="8" fill="#FFFFFF" />
+  </g>
+
+  <!-- UPPER LEFT: Vintage Crossed Scissors -->
+  <g transform="translate(42, 210) scale(0.68)" stroke="#FFFFFF" fill="none" stroke-width="2.5">
+    <circle cx="20" cy="70" r="10" />
+    <circle cx="50" cy="70" r="10" />
+    <path d="M 20,60 L 50,15" />
+    <path d="M 50,60 L 20,15" />
+    <circle cx="35" cy="40" r="2.5" fill="#FFFFFF" />
+  </g>
+
+  <!-- UPPER RIGHT: Straight Razor & Razor Blade -->
+  <g transform="translate(365, 210) scale(0.68)" stroke="#FFFFFF" fill="none" stroke-width="2.5">
+    <!-- Folding Razor Handle & Blade -->
+    <path d="M 20,65 Q 40,40 70,25" stroke-width="5" />
+    <path d="M 20,65 L 85,75 L 80,60 L 20,55 Z" fill="#FFFFFF" fill-opacity="0.3" stroke-width="2" />
+    <circle cx="20" cy="65" r="3" fill="#FFFFFF" />
+    <!-- Safety Razor Blade -->
+    <rect x="55" y="75" width="28" height="14" rx="2" stroke-width="1.5" />
+    <circle cx="69" cy="82" r="2.5" fill="#FFFFFF" />
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- CENTRAL PROMINENT BEARDED SKULL WITH POMPADOUR & MUSTACHE -->
+  <!-- ======================================================== -->
+  <g id="central-bearded-skull" transform="translate(250, 420)">
+    <!-- 1. POMPADOUR HAIR (TOP) -->
+    <g fill="#FFFFFF" stroke="#000000" stroke-width="1.5">
+      <path d="M -90,-160 C -120,-110 -115,-40 -105,-15 C -95,-60 -70,-115 -20,-140 C 40,-165 95,-130 100,-75 C 105,-120 70,-175 0,-185 C -55,-190 -80,-175 -90,-160 Z" />
+      <!-- Detailed Wave Texture Lines -->
+      <path d="M -75,-145 C -45,-165 15,-165 65,-120" fill="none" stroke="#000000" stroke-width="2" />
+      <path d="M -60,-130 C -30,-150 25,-150 75,-105" fill="none" stroke="#000000" stroke-width="2" />
+      <path d="M -40,-115 C -15,-135 35,-135 82,-90" fill="none" stroke="#000000" stroke-width="2" />
+      <path d="M -80,-110 C -55,-90 0,-100 40,-85" fill="none" stroke="#000000" stroke-width="1.8" />
+    </g>
+
+    <!-- 2. SKULL CRANIUM -->
+    <path d="M -90,-25 C -105,25 -95,75 -75,100 C -60,115 -60,135 -50,150 L 50,150 C 60,135 60,115 75,100 C 95,75 105,25 90,-25 C 75,-90 -75,-90 -90,-25 Z" fill="#F8FAFC" stroke="#000000" stroke-width="3" />
+
+    <!-- Forehead Crack Marks -->
+    <path d="M -15,-70 L -8,-45 L 5,-35 L 2,-15" fill="none" stroke="#000000" stroke-width="2" opacity="0.8" />
+
+    <!-- 3. DEEP SKULL EYE SOCKETS -->
+    <path d="M -68,15 C -72,48 -52,70 -30,65 C -15,60 -18,25 -32,15 C -45,5 -62,-2 -68,15 Z" fill="#000000" />
+    <path d="M 68,15 C 72,48 52,70 30,65 C 15,60 18,25 32,15 C 45,5 62,-2 68,15 Z" fill="#000000" />
+
+    <!-- 4. INVERTED HEART NASAL CAVITY -->
+    <path d="M 0,60 L -12,95 L 0,88 L 12,95 Z" fill="#000000" />
+
+    <!-- Cheekbone Contours -->
+    <path d="M -75,70 C -65,85 -45,95 -25,95" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 75,70 C 65,85 45,95 25,95" fill="none" stroke="#000000" stroke-width="2" />
+
+    <!-- 5. ROWS OF TEETH -->
+    <g fill="#F8FAFC" stroke="#000000" stroke-width="1.8">
+      <rect x="-35" y="125" width="10" height="18" rx="2" />
+      <rect x="-23" y="125" width="10" height="20" rx="2" />
+      <rect x="-11" y="125" width="10" height="20" rx="2" />
+      <rect x="1" y="125" width="10" height="20" rx="2" />
+      <rect x="13" y="125" width="10" height="20" rx="2" />
+      <rect x="25" y="125" width="10" height="18" rx="2" />
+    </g>
+
+    <!-- 6. CLASSIC HANDLEBAR MUSTACHE -->
+    <g fill="#000000" stroke="#FFFFFF" stroke-width="1.5">
+      <path d="M 0,110 C -25,100 -65,102 -95,122 C -115,135 -110,148 -95,142 C -65,128 -30,130 0,145 C 30,130 65,128 95,142 C 110,148 115,135 95,122 C 65,102 25,100 0,110 Z" />
+      <!-- Mustache Bristle Highlights -->
+      <path d="M -75,122 C -50,115 -25,116 0,122" fill="none" stroke="#FFFFFF" stroke-width="1.2" />
+      <path d="M 75,122 C 50,115 25,116 0,122" fill="none" stroke="#FFFFFF" stroke-width="1.2" />
+    </g>
+
+    <!-- 7. THICK FULL BARBERSHOP BEARD -->
+    <g fill="#000000" stroke="#FFFFFF" stroke-width="1.5">
+      <path d="M -70,140 C -85,185 -80,240 -50,285 C -25,320 -5,340 0,350 C 5,340 25,320 50,285 C 80,240 85,185 70,140 C 60,165 40,175 0,175 C -40,175 -60,165 -70,140 Z" />
+      <!-- Detailed Vertical Beard Texture Hatches -->
+      <path d="M -40,180 C -45,220 -30,265 -15,305" fill="none" stroke="#FFFFFF" stroke-width="1.8" />
+      <path d="M -20,185 C -25,230 -15,280 0,335" fill="none" stroke="#FFFFFF" stroke-width="2" />
+      <path d="M 0,185 C 0,235 0,290 0,345" fill="none" stroke="#FFFFFF" stroke-width="2.2" />
+      <path d="M 20,185 C 25,230 15,280 0,335" fill="none" stroke="#FFFFFF" stroke-width="2" />
+      <path d="M 40,180 C 45,220 30,265 15,305" fill="none" stroke="#FFFFFF" stroke-width="1.8" />
+      <path d="M -55,200 C -55,230 -40,260 -25,280" fill="none" stroke="#FFFFFF" stroke-width="1.5" />
+      <path d="M 55,200 C 55,230 40,260 25,280" fill="none" stroke="#FFFFFF" stroke-width="1.5" />
+    </g>
+  </g>
+
+  <!-- LOWER LEFT: Crossed Scissors & Razor -->
+  <g transform="translate(45, 620) scale(0.7)" stroke="#FFFFFF" fill="none" stroke-width="2.5">
+    <circle cx="20" cy="70" r="10" />
+    <circle cx="50" cy="70" r="10" />
+    <path d="M 20,60 L 50,15" />
+    <path d="M 50,60 L 20,15" />
+    <circle cx="35" cy="40" r="2.5" fill="#FFFFFF" />
+  </g>
+
+  <!-- LOWER RIGHT: Shaving Brush & Mini Skull -->
+  <g transform="translate(370, 600) scale(0.7)" stroke="#FFFFFF" fill="#FFFFFF">
+    <!-- Shaving Brush -->
+    <path d="M 15,35 C 10,20 18,5 30,5 C 42,5 50,20 45,35 Z" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+    <rect x="22" y="35" width="16" height="22" rx="4" fill="#FFFFFF" />
+    <!-- Secondary Mini Skull -->
+    <g transform="translate(25, 45) scale(0.85)">
+      <path d="M 28,15 C 22,2 45,0 52,6 C 58,1 78,5 72,18 C 76,22 74,30 68,34 C 68,44 60,54 50,56 C 40,54 32,44 32,34 Z" fill="#000000" stroke="#FFFFFF" stroke-width="2" />
+      <circle cx="42" cy="30" r="4" fill="#FFFFFF" />
+      <circle cx="58" cy="30" r="4" fill="#FFFFFF" />
+      <path d="M 36,44 C 44,48 56,48 64,44 C 62,56 50,68 50,68 C 50,68 38,56 36,44 Z" fill="#FFFFFF" />
+    </g>
+  </g>
+
+  <!-- BOTTOM BANNER: GENTLEMEN -->
+  <g stroke="#FFFFFF">
+    <path d="M 130,715 Q 250,745 370,715 L 360,750 Q 250,775 140,750 Z" fill="#FFFFFF" stroke-width="3" />
+    <!-- Ribbon Tail Folds -->
+    <path d="M 130,715 L 105,695 L 115,735 L 140,750 Z" fill="#000000" stroke-width="2" />
+    <path d="M 370,715 L 395,695 L 385,735 L 360,750 Z" fill="#000000" stroke-width="2" />
+  </g>
+  <text font-family="'Times New Roman', Georgia, serif" font-weight="900" font-size="28" letter-spacing="8" fill="#000000" text-anchor="middle">
+    <textPath href="#bottom-ribbon-arc" startOffset="50%" text-anchor="middle">
+      GENTLEMEN
+    </textPath>
+  </text>
+
+  <!-- Fleur-de-lis & Traditional Stars Under Gentlemen Banner -->
+  <g fill="#FFFFFF" stroke="none">
+    <polygon points="250,768 253,776 261,776 255,781 257,789 250,784 243,789 245,781 239,776 247,776" />
+    <polygon points="190,768 192,774 198,774 193,778 195,784 190,780 185,784 187,778 182,774 188,774" />
+    <polygon points="310,768 312,774 318,774 313,778 315,784 310,780 305,784 307,778 302,774 308,774" />
+  </g>
+</svg>

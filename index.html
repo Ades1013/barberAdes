@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>BarberAdes - Turnos y Gestión de Barberías en Tiempo Real</title>
+    <meta name="description" content="Plataforma en tiempo real para barberos y clientes: reserva de turnos, gestión de disponibilidad y sincronización en vivo." />
+    <meta property="og:title" content="BarberAdes - Turnos y Gestión de Barberías en Tiempo Real" />
+    <meta property="og:description" content="Plataforma en tiempo real para barberos y clientes: reserva de turnos, gestión de disponibilidad y sincronización en vivo." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          if (window.opener && window.opener !== window) {
+            var hash = window.location.hash || '';
+            var search = window.location.search || '';
+            var href = window.location.href || '';
+            if (hash.indexOf('access_token=') !== -1 || href.indexOf('access_token=') !== -1 || search.indexOf('code=') !== -1) {
+              try {
+                window.opener.postMessage({
+                  type: 'BARBERSYNC_SUPABASE_AUTH_CALLBACK',
+                  hash: hash,
+                  search: search,
+                  href: href
+                }, '*');
+              } catch (e1) {}
+              try {
+                if (hash.indexOf('access_token=') !== -1 || href.indexOf('access_token=') !== -1) {
+                  localStorage.setItem('barbersync_oauth_hash_exchange', hash || href);
+                }
+              } catch (e2) {}
+              setTimeout(function() {
+                try { window.close(); } catch (e) {}
+              }, 250);
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-[#0c0e12] text-slate-100 antialiased font-['Plus_Jakarta_Sans',sans-serif] selection:bg-amber-500/30 selection:text-amber-200 overflow-x-hidden w-full max-w-full">
+    <div id="root" class="overflow-x-hidden w-full max-w-full min-h-screen"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

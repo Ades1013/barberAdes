@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Requisito 3: Resaltado / Selección de texto azul barbero con texto blanco de alto contraste */
+::selection {
+  background-color: #2563EB !important;
+  color: #FFFFFF !important;
+}
+::-moz-selection {
+  background-color: #2563EB !important;
+  color: #FFFFFF !important;
+}
+
+/* Custom Leaflet dark theme popups */
+.custom-leaflet-dark-popup .leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7) !important;
+  padding: 4px !important;
+}
+
+.custom-leaflet-dark-popup .leaflet-popup-tip {
+  background: #0f172a !important;
+}
+
+.custom-leaflet-dark-popup a.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  padding: 6px !important;
+}
+.custom-leaflet-dark-popup a.leaflet-popup-close-button:hover {
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   REGLA ESTRUCTURAL DEL MODO DÍA (Lienzo Blanco con Componentes Dark)
+   - Todas las tarjetas, modales, menús y botones conservan sus estilos oscuros
+     (slate-900 / slate-950, bordes oscuros, textos claros).
+   - Lo ÚNICO que conmuta el switch de Modo Día es el lienzo principal de fondo
+     de la pantalla (body / contenedor principal / header / footer), cambiando a blanco (#FFFFFF)
+     o gris muy claro (#F8FAFC). De este modo, los bloques oscuros resaltan con
+     elegancia sobre el fondo claro sin romper ningún texto ni botón.
+   ========================================================================== */
+html.light,
+html.light body,
+html.light #root {
+  background-color: #FFFFFF;
+  color: #0F172A;
+}
+
+/* Encabezado y Footer en Modo Día: Lienzo limpio y bordes sutiles */
+html.light header {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-bottom-color: #E2E8F0 !important;
+}
+
+html.light footer {
+  background-color: #FFFFFF !important;
+  border-top-color: #E2E8F0 !important;
+}
+
+/* Brand wordmark en el Header y Footer cuando el lienzo es blanco */
+html.light header .brand-wordmark-title,
+html.light footer .brand-wordmark-title {
+  color: #0F172A !important;
+}
+
+/* Requisito 1: Fondo Tapiz Vintage Mosaico (4 imágenes horizontales × 2 imágenes verticales en pantallas PC / Desktop lg:) */
+.vintage-mosaic-bg {
+  background-image: url('/vintage-barbershop-bg.jpg');
+  background-repeat: repeat;
+  background-size: 50% auto;
+}
+
+@media (min-width: 640px) {
+  .vintage-mosaic-bg {
+    background-size: 33.333% auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .vintage-mosaic-bg {
+    background-size: 25% 50% !important;
+  }
+}

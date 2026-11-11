@@ -1,0 +1,6 @@
+{
+  "summary":  "Plan integral para solucionar la sincronización estricta de días laborales y descanso, la purga automática de excepciones caducadas, la restricción de frecuencia bidireccional (+/-6 días) y la sincronización de la tira de días rápidos con el validador del calendario en BarberSync.",
+  "updatedAt":  "2026-11-10T07:52:05.672824379Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

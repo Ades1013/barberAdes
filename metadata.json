@@ -1,0 +1,8 @@
+{
+  "name": "Remix BarberSync 22-10-2026",
+  "description": "Plataforma en tiempo real para barberos y clientes: reserva de turnos, gestión de disponibilidad y sincronización en vivo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
