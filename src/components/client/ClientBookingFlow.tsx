@@ -16,6 +16,8 @@ interface ClientBookingFlowProps {
   appointments: Appointment[];
   blockedSlots: BlockedSlot[];
   currentUser: UserType | null;
+  targetBarberId?: string | null;
+  isBarbersLoaded?: boolean;
   onOpenAuthModal: () => void;
   onBookingComplete: (newAppointment: Appointment) => void;
   onRefreshData?: () => void;
@@ -27,6 +29,8 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
   appointments,
   blockedSlots,
   currentUser,
+  targetBarberId,
+  isBarbersLoaded = true,
   onOpenAuthModal,
   onBookingComplete,
   onRefreshData,
@@ -48,7 +52,7 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
     const initBarbersAndAvailability = async () => {
       setLoading(true);
       try {
-        if (onRefreshData && (propBarbers.length === 0 || propServices.length === 0)) {
+        if (onRefreshData && (propBarbers.length === 0 || propServices.length === 0 || !isBarbersLoaded)) {
           await Promise.resolve(onRefreshData());
         }
       } catch (err) {
@@ -82,12 +86,14 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
 
   // Barbero habitual / última cita para el usuario autenticado
   const [habitualBarber, setHabitualBarber] = useState<Barber | null>(null);
+  const qrAutoSelectedRef = useRef<boolean>(false);
 
   // Consulta estricta de historial de citas en public.appointments para identificar el barbero habitual
   const lastResolvedUserIdRef = useRef<string | null>(null);
   React.useEffect(() => {
     if (!currentUser || !currentUser.id) {
       lastResolvedUserIdRef.current = null;
+      qrAutoSelectedRef.current = false;
       setHabitualBarber(null);
       setSelectedBarberId('');
       return;
@@ -95,10 +101,19 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
 
     const activeUser = currentUser;
     const isUserChanged = lastResolvedUserIdRef.current !== activeUser.id;
+    const hasPendingQrTarget = Boolean(
+      targetBarberId ||
+        (typeof window !== 'undefined' &&
+          (new URLSearchParams(window.location.search).get('barber') ||
+            localStorage.getItem('barberades_qr_barber')))
+    );
+
     if (isUserChanged) {
       lastResolvedUserIdRef.current = activeUser.id;
       setHabitualBarber(null);
-      setSelectedBarberId('');
+      if (!qrAutoSelectedRef.current && !hasPendingQrTarget) {
+        setSelectedBarberId('');
+      }
     }
 
     let isMounted = true;
@@ -111,25 +126,31 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
         if (!isMounted) return;
 
         if (foundBarberId) {
-          const barberObj = barbers.find((b) => b.id === foundBarberId);
+          const barberObj = barbers.find((b) => b.id === foundBarberId || b.user_id === foundBarberId || b.userId === foundBarberId);
           if (barberObj) {
             setHabitualBarber((prev) => (prev?.id === barberObj.id ? prev : barberObj));
-            setSelectedBarberId((prev) => (prev ? prev : barberObj.id));
+            if (!qrAutoSelectedRef.current && !hasPendingQrTarget) {
+              setSelectedBarberId((prev) => (prev ? prev : barberObj.id));
+            }
           } else {
             setHabitualBarber(null);
-            if (isUserChanged) setSelectedBarberId('');
+            if (isUserChanged && !qrAutoSelectedRef.current && !hasPendingQrTarget) {
+              setSelectedBarberId('');
+            }
           }
         } else {
           // Cuenta sin citas previas en public.appointments: selección completamente en blanco y sin etiqueta Habitual
           setHabitualBarber(null);
-          if (isUserChanged) {
+          if (isUserChanged && !qrAutoSelectedRef.current && !hasPendingQrTarget) {
             setSelectedBarberId('');
           }
         }
       } catch {
         if (isMounted) {
           setHabitualBarber(null);
-          if (isUserChanged) setSelectedBarberId('');
+          if (isUserChanged && !qrAutoSelectedRef.current && !hasPendingQrTarget) {
+            setSelectedBarberId('');
+          }
         }
       }
     }
@@ -139,7 +160,7 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [currentUser?.id, barbers]);
+  }, [currentUser?.id, barbers, targetBarberId]);
 
   // Regla 1: Búsqueda en vivo y proximidad
   const [barberSearchQuery, setBarberSearchQuery] = useState<string>('');
@@ -188,8 +209,20 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
     if (!selectedBarberId) return null;
     const unifiedId = storageService.resolveUnifiedBarberId(selectedBarberId);
     return (
-      uniqueBarbers.find((b) => b.id === unifiedId || b.id === selectedBarberId) ||
-      barbers.find((b) => b.id === unifiedId || b.id === selectedBarberId) ||
+      uniqueBarbers.find(
+        (b) =>
+          b.id === unifiedId ||
+          b.id === selectedBarberId ||
+          b.user_id === selectedBarberId ||
+          b.userId === selectedBarberId
+      ) ||
+      barbers.find(
+        (b) =>
+          b.id === unifiedId ||
+          b.id === selectedBarberId ||
+          b.user_id === selectedBarberId ||
+          b.userId === selectedBarberId
+      ) ||
       null
     );
   }, [uniqueBarbers, barbers, selectedBarberId]);
@@ -197,17 +230,88 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
   // Regla 2: Catálogo dinámico por profesional
   const filteredServices = useMemo(() => {
     if (!currentBarber) return [];
+    if (Array.isArray(currentBarber.services) && currentBarber.services.length > 0) {
+      return currentBarber.services;
+    }
     if (currentBarber.serviceIds && currentBarber.serviceIds.length > 0) {
-      return services.filter((s) => currentBarber.serviceIds!.includes(s.id));
+      const matchedByIds = services.filter((s) => currentBarber.serviceIds!.includes(s.id));
+      if (matchedByIds.length > 0) return matchedByIds;
     }
     return services.filter((s) => {
-      if (s.barberId) return s.barberId === currentBarber.id;
+      if (s.barberId) {
+        return (
+          s.barberId === currentBarber.id ||
+          s.barberId === currentBarber.user_id ||
+          s.barberId === currentBarber.userId
+        );
+      }
       if (s.barbershopName && currentBarber.barbershopName) {
         return s.barbershopName === currentBarber.barbershopName;
       }
       return true;
     });
   }, [services, currentBarber]);
+
+  // Auto-selección de la ficha del barbero desde enlace directo / Código QR (?barber=ID)
+  useEffect(() => {
+    if (!currentUser || loading || !isBarbersLoaded || barbers.length === 0) return;
+
+    const effectiveTargetId =
+      targetBarberId ||
+      (typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('barber') ||
+          localStorage.getItem('barberades_qr_barber')
+        : null);
+
+    if (!effectiveTargetId) return;
+
+    const matchedBarber = barbers.find(
+      (b) =>
+        b.id === effectiveTargetId ||
+        b.user_id === effectiveTargetId ||
+        b.userId === effectiveTargetId
+    );
+
+    if (matchedBarber) {
+      qrAutoSelectedRef.current = true;
+      setBarberSearchQuery('');
+      setSelectedBarberId(matchedBarber.id);
+      setSelectedTime(null);
+
+      // Seleccionar inmediatamente el primer servicio del barbero si tiene catálogo propio
+      const barberCatalog =
+        Array.isArray(matchedBarber.services) && matchedBarber.services.length > 0
+          ? matchedBarber.services
+          : matchedBarber.serviceIds && matchedBarber.serviceIds.length > 0
+          ? services.filter((s) => matchedBarber.serviceIds!.includes(s.id))
+          : services.filter((s) => !s.barberId || s.barberId === matchedBarber.id || s.barberId === matchedBarber.user_id || s.barberId === matchedBarber.userId);
+
+      if (barberCatalog.length > 0) {
+        setSelectedServiceId(barberCatalog[0].id);
+      }
+
+      // Eliminar barberades_qr_barber de localStorage y limpiar query param de la URL
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('barberades_qr_barber');
+        } catch {}
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('barber');
+          const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
+          window.history.replaceState({}, document.title, cleanUrl);
+        } catch {}
+      }
+
+      // Scroll suave hacia la sección de reserva para mostrar la ficha del barbero y sus servicios
+      setTimeout(() => {
+        const el = document.getElementById('step-barber');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150);
+    }
+  }, [currentUser, loading, isBarbersLoaded, barbers, services, targetBarberId]);
 
   // Sincronizar servicio seleccionado con el catálogo del barbero
   React.useEffect(() => {
@@ -1983,7 +2087,7 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
           )}
         </div>
 
-        {/* Contenedor de barberos: Búsqueda activa vs Barbero habitual vs Estado limpio */}
+        {/* Contenedor de barberos: Búsqueda activa vs Barbero seleccionado / habitual vs Estado limpio */}
         {barberSearchQuery.trim() ? (
           matchingBarbers.length === 0 ? (
             <div className="py-10 px-6 text-center rounded-2xl bg-slate-900/40 border border-slate-800/80">
@@ -1999,6 +2103,10 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
               {matchingBarbers.map((barber) => renderBarberCard(barber, false))}
             </div>
           )
+        ) : currentBarber ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {renderBarberCard(currentBarber, habitualBarber?.id === currentBarber.id)}
+          </div>
         ) : habitualBarber ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {renderBarberCard(habitualBarber, true)}

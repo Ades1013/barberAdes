@@ -11,6 +11,7 @@ export interface SocialLink {
 export interface Barber {
   id: string;
   userId?: string;
+  user_id?: string;
   email?: string;
   name: string;
   nickname: string;

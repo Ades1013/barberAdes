@@ -33,6 +33,16 @@ export function App() {
   // Determine initial role synchronously on load / F5 avoiding flicker
   const [role, setRole] = useState<Role>(() => {
     if (typeof window !== 'undefined') {
+      const qrBarberParam = new URLSearchParams(window.location.search).get('barber');
+      if (qrBarberParam) {
+        try {
+          localStorage.setItem('barberades_qr_barber', qrBarberParam);
+        } catch {}
+        if (!authService.getCurrentUser()) {
+          localStorage.setItem('barbersync_active_role', 'client');
+          return 'client';
+        }
+      }
       const activeRole = localStorage.getItem('barbersync_active_role');
       if (activeRole === 'barber') return 'barber';
       if (activeRole === 'client') return 'client';
@@ -126,7 +136,18 @@ export function App() {
   const [appointments, setAppointments] = useState<Appointment[]>(() => storageService.getCachedAppointments());
   const [blockedSlots, setBlockedSlots] = useState<BlockedSlot[]>(() => storageService.getCachedBlockedSlots());
   const [, setLoading] = useState<boolean>(false);
+  const [isBarbersCloudLoaded, setIsBarbersCloudLoaded] = useState<boolean>(false);
   const [, setDataVersion] = useState<number>(0);
+
+  // Persistencia inmediata del parámetro ?barber= durante el montaje inicial
+  if (typeof window !== 'undefined') {
+    const initialBarberParam = new URLSearchParams(window.location.search).get('barber');
+    if (initialBarberParam) {
+      try {
+        localStorage.setItem('barberades_qr_barber', initialBarberParam);
+      } catch {}
+    }
+  }
 
   // Requisito 2: Aislamiento absoluto de datos del barbero por user_id (prohibido fallback a barbers[0] o datos de otros locales)
   const currentBarberForUser = useMemo(() => {
@@ -606,8 +627,10 @@ export function App() {
         });
       }
       setServices(storageService.getServices());
+      setIsBarbersCloudLoaded(true);
     } catch (err) {
       console.warn('Supabase sync warning:', err);
+      setIsBarbersCloudLoaded(true);
     } finally {
       isFetchingRef.current = false;
       setLoading(false);
@@ -615,6 +638,16 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    // Persistencia del parámetro ?barber= en el montaje inicial antes de cualquier redirección OAuth
+    if (typeof window !== 'undefined') {
+      const barberId = new URLSearchParams(window.location.search).get('barber');
+      if (barberId) {
+        try {
+          localStorage.setItem('barberades_qr_barber', barberId);
+        } catch {}
+      }
+    }
+
     // Initial fetch from cloud - UNA SOLA VEZ al montar el componente
     loadData();
 
@@ -985,6 +1018,13 @@ export function App() {
               appointments={appointments}
               blockedSlots={blockedSlots}
               currentUser={currentUser}
+              targetBarberId={
+                typeof window !== 'undefined'
+                  ? new URLSearchParams(window.location.search).get('barber') ||
+                    localStorage.getItem('barberades_qr_barber')
+                  : null
+              }
+              isBarbersLoaded={isBarbersCloudLoaded}
               onOpenAuthModal={() => setIsAuthModalOpen(true)}
               onRefreshData={loadData}
               onBookingComplete={(apt) => setConfirmedAppointment(apt)}

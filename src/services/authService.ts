@@ -102,7 +102,11 @@ class AuthService {
       await supabase.auth.signOut();
     } catch {}
     if (typeof window !== 'undefined') {
+      const qrBarber = localStorage.getItem('barberades_qr_barber');
       localStorage.clear();
+      if (qrBarber) {
+        localStorage.setItem('barberades_qr_barber', qrBarber);
+      }
     }
     this.currentUser = null;
     this.notify();
@@ -117,6 +121,10 @@ class AuthService {
       const search = searchStr ?? window.location.search ?? '';
       if (!search) return;
       const params = new URLSearchParams(search);
+      const qrBarber = params.get('barber');
+      if (qrBarber) {
+        localStorage.setItem('barberades_qr_barber', qrBarber);
+      }
       const urlIntentRole = params.get('auth_intent_role') || params.get('auth_role');
       const urlIntentAction = params.get('auth_intent_action');
       if (urlIntentAction === 'login' || urlIntentAction === 'register') {

@@ -21,7 +21,7 @@ export const BarberQrModal: React.FC<BarberQrModalProps> = ({
 
   const barberIdentifier = barber?.id || barber?.userId || '';
   const bookingUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}?barber=${barberIdentifier}`
+    ? `${window.location.origin}/?barber=${barber?.id || barberIdentifier}`
     : '';
 
   const barbershopTitle = barber?.barbershopName || barber?.name || 'BarberAdes Studio';

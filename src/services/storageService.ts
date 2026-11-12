@@ -822,6 +822,7 @@ export const storageService = {
           const barberObj: any = {
             id: String(row.id),
             userId: row.user_id || match?.userId,
+            user_id: row.user_id || match?.userId,
             email: row.email || match?.email || undefined,
             name: String(row.name || match?.name || ''),
             alias: rawAlias,
