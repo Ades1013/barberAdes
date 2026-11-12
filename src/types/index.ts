@@ -144,6 +144,13 @@ export interface Appointment {
   created_at?: string;
   source: 'online' | 'walk_in';
   type?: 'presencial' | 'virtual' | 'web' | 'online' | string;
+  rated?: boolean;
+  rating?: number;
+  review?: string;
+  reviewComment?: string;
+  review_comment?: string;
+  rating_dismissed?: boolean;
+  ratingDismissed?: boolean;
 }
 
 export interface BlockedSlot {

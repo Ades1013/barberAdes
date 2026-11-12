@@ -348,10 +348,17 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
     if (!currentBarber) return [1, 2, 3, 4, 5, 6];
     const raw =
       currentBarber.workingHours?.workingDays ||
+      (currentBarber.schedule as any)?.working_days ||
+      (currentBarber.schedule as any)?.work_days ||
+      (currentBarber.schedule as any)?.workingDaysArray ||
+      (currentBarber as any)?.working_days;
+    const rawText =
+      currentBarber.workingDaysText ||
       currentBarber.workingDays ||
       currentBarber.schedule?.workingDays ||
-      currentBarber.workingDaysText;
-    return normalizeWorkingDaysToNumbers(raw, 'Lunes a Sábado');
+      (currentBarber.schedule as any)?.working_days_text ||
+      'Lunes a Sábado';
+    return normalizeWorkingDaysToNumbers(raw, String(rawText));
   }, [currentBarber]);
 
   // Límite estricto de 31 días hábiles contados a partir de la fecha actual
@@ -398,7 +405,21 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
       const dateObj = new Date(y, m - 1, d, 12, 0, 0);
       const dayOfWeek = dateObj.getDay();
 
-      const specialForDate: any = currentBarber?.workingHours?.specialDaySchedules?.find((s: any) => s && s.date === dateStr);
+      // Prioridad estricta de Días de Descanso sobre Excepciones de Horario:
+      // Validar PRIMERO si el día de la semana está activo en "Días Laborales".
+      if (!barberWorkingDayNumbers.includes(dayOfWeek)) {
+        return { available: false, reason: 'Día de descanso del barbero', isPast: false, isRestDay: true, isFrequencyRestricted: false };
+      }
+
+      const wh = currentBarber?.workingHours || (currentBarber as any)?.working_hours || {};
+      const specialList: any[] = [
+        ...(Array.isArray(wh.specialDaySchedules) ? wh.specialDaySchedules : []),
+        ...(Array.isArray((currentBarber?.schedule as any)?.exceptions) ? (currentBarber?.schedule as any).exceptions : []),
+        ...(Array.isArray((currentBarber?.schedule as any)?.special_hours) ? (currentBarber?.schedule as any).special_hours : []),
+      ];
+      const specialForDate: any =
+        specialList.find((s: any) => s && s.date === dateStr) ||
+        specialList.find((s: any) => s && !s.date && Number(s.dayOfWeek) === dayOfWeek);
       const isSpecialClosed = Boolean(
         specialForDate && (
           specialForDate.isClosed ||
@@ -407,10 +428,8 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
           specialForDate.label === 'Día de Descanso'
         )
       );
-      const hasSpecialOpen = Boolean(specialForDate && !isSpecialClosed);
 
-      const isRestDay = (!barberWorkingDayNumbers.includes(dayOfWeek) || isSpecialClosed) && !hasSpecialOpen;
-      if (isRestDay) {
+      if (isSpecialClosed) {
         return { available: false, reason: 'Día de descanso del barbero', isPast: false, isRestDay: true, isFrequencyRestricted: false };
       }
 
@@ -663,6 +682,14 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
   // Calculate real-time slots strictly bounded by working_hours (open and close times)
   const availableSlots: TimeSlotStatus[] = useMemo(() => {
     if (!currentBarber || !selectedDate) return [];
+    const [yy, mm, dd] = selectedDate.split('-').map(Number);
+    const dayOfWeek = new Date(yy, mm - 1, dd, 12, 0, 0).getDay();
+
+    // Validar PRIMERO si el día de la semana está activo en "Días Laborales"
+    if (!barberWorkingDayNumbers.includes(dayOfWeek)) {
+      return [];
+    }
+
     const rawSlots = generateDailySlots(currentBarber, selectedDate, effectiveAppointments, blockedSlots);
 
     // Validación global estricta con working_hours (hora de apertura y cierre configuradas)
@@ -672,8 +699,6 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
       ...(Array.isArray((currentBarber.schedule as any)?.exceptions) ? (currentBarber.schedule as any).exceptions : []),
       ...(Array.isArray((currentBarber.schedule as any)?.special_hours) ? (currentBarber.schedule as any).special_hours : []),
     ];
-    const [yy, mm, dd] = selectedDate.split('-').map(Number);
-    const dayOfWeek = new Date(yy, mm - 1, dd).getDay();
     const specialForDate =
       specialList.find((s) => s && s.date === selectedDate) ||
       specialList.find((s) => s && !s.date && Number(s.dayOfWeek) === dayOfWeek);
@@ -702,7 +727,7 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
       }
       return true;
     });
-  }, [currentBarber, selectedDate, effectiveAppointments, blockedSlots]);
+  }, [currentBarber, selectedDate, effectiveAppointments, blockedSlots, barberWorkingDayNumbers]);
 
   // Reset selected time if it becomes booked/unavailable in real time
   React.useEffect(() => {
@@ -807,15 +832,21 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
     return activeUpcomingAppointments.length >= 3;
   }, [currentUser, activeUpcomingAppointments]);
 
-  // Citas completadas pendientes de calificación
-  const pendingReviewAppointments = useMemo(() => {
-    if (!currentUser) return [];
+  // 1. Filtrado Estricto de Citas Pendientes de Calificación
+  const [pendingRatings, setPendingRatings] = useState<Appointment[]>([]);
+  const [handledRatingIds, setHandledRatingIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    if (!currentUser) {
+      setPendingRatings([]);
+      return;
+    }
     const reviewedIds = storageService.getReviewedAppointmentIds();
     const dismissedIds = storageService.getDismissedReviewIds();
     const cleanId = (currentUser.id || '').trim();
     const cleanEmail = (currentUser.email || '').trim().toLowerCase();
 
-    return effectiveAppointments.filter((apt) => {
+    const filtered = effectiveAppointments.filter((apt) => {
       const aptId = (apt.clientId || (apt as any).client_id || '').trim();
       const aptEmail = (apt.clientEmail || (apt as any).client_email || '').trim().toLowerCase();
 
@@ -823,35 +854,94 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
         Boolean(cleanId && aptId && aptId === cleanId) ||
         Boolean(cleanEmail && aptEmail && aptEmail === cleanEmail);
 
-      const isCompleted = apt.status === 'completed';
-      if (!isClientAppointment || !isCompleted) return false;
+      if (!isClientAppointment) return false;
 
-      return !reviewedIds.has(apt.id) && !dismissedIds.has(apt.id);
+      // Condición obligatoria: apt.status === "completed" && !apt.rated && !apt.rating_dismissed
+      if (!(apt.status === 'completed' && !apt.rated && !apt.rating_dismissed)) {
+        return false;
+      }
+
+      if ((apt as any).rating || (apt as any).reviewCompleted || (apt as any).ratingDismissed) {
+        return false;
+      }
+
+      return !reviewedIds.has(apt.id) && !dismissedIds.has(apt.id) && !handledRatingIds.has(apt.id);
     });
-  }, [effectiveAppointments, currentUser]);
+
+    setPendingRatings(filtered);
+  }, [effectiveAppointments, currentUser, handledRatingIds]);
 
   const [selectedRatingByApt, setSelectedRatingByApt] = useState<Record<string, number>>({});
   const [isSubmittingRating, setIsSubmittingRating] = useState<Record<string, boolean>>({});
   const [ratingSuccessMsg, setRatingSuccessMsg] = useState<string | null>(null);
 
+  // 2. Persistencia Inmediata al Presionar "Calificar servicio"
   const handleSubmitRating = async (apt: Appointment) => {
-    const stars = selectedRatingByApt[apt.id] || 5;
-    setIsSubmittingRating((prev) => ({ ...prev, [apt.id]: true }));
+    const appointmentId = apt.id;
+    const selectedRating = selectedRatingByApt[appointmentId] || 5;
+    const commentText = '';
+    setIsSubmittingRating((prev) => ({ ...prev, [appointmentId]: true }));
+
+    // b) Remover la cita del estado local en ese mismo instante para que desaparezca visualmente de inmediato
+    setPendingRatings((prev) => prev.filter((item) => item.id !== appointmentId));
+    setHandledRatingIds((prev) => {
+      const next = new Set(prev);
+      next.add(appointmentId);
+      return next;
+    });
+    setLocalApts((prev) =>
+      prev.map((item) =>
+        item.id === appointmentId
+          ? { ...item, rated: true, rating: selectedRating, review: commentText }
+          : item
+      )
+    );
+
     try {
-      await storageService.submitBarberRating(apt.barberId, stars, apt.id);
-      setRatingSuccessMsg(`¡Gracias por calificar a ${apt.barberName} con ${stars} estrellas!`);
+      // a) Actualizar inmediatamente la fila en Supabase ('public.appointments')
+      await supabase
+        .from('appointments')
+        .update({ rated: true, rating: selectedRating, review: commentText })
+        .eq('id', appointmentId);
+
+      await storageService.submitBarberRating(apt.barberId, selectedRating, appointmentId, commentText);
+      setRatingSuccessMsg(`¡Gracias por calificar a ${apt.barberName} con ${selectedRating} estrellas!`);
       setTimeout(() => setRatingSuccessMsg(null), 5000);
       if (onRefreshData) onRefreshData();
     } catch (e) {
       console.warn('Error submitting rating:', e);
     } finally {
-      setIsSubmittingRating((prev) => ({ ...prev, [apt.id]: false }));
+      setIsSubmittingRating((prev) => ({ ...prev, [appointmentId]: false }));
     }
   };
 
-  const handleDismissRating = (aptId: string) => {
-    storageService.dismissAppointmentReview(aptId);
-    if (onRefreshData) onRefreshData();
+  // 3. Descarte Permanente con "Cerrar sin calificar"
+  const handleDismissRating = async (appointmentId: string) => {
+    // b) Remover la tarjeta del estado local de inmediato
+    setPendingRatings((prev) => prev.filter((item) => item.id !== appointmentId));
+    setHandledRatingIds((prev) => {
+      const next = new Set(prev);
+      next.add(appointmentId);
+      return next;
+    });
+    setLocalApts((prev) =>
+      prev.map((item) =>
+        item.id === appointmentId ? { ...item, rating_dismissed: true } : item
+      )
+    );
+
+    try {
+      // a) Actualizar la cita en Supabase marcándola como descartada
+      await supabase
+        .from('appointments')
+        .update({ rating_dismissed: true })
+        .eq('id', appointmentId);
+
+      await storageService.dismissAppointmentReview(appointmentId);
+      if (onRefreshData) onRefreshData();
+    } catch (e) {
+      console.warn('Error dismissing rating:', e);
+    }
   };
 
   // Fechas con reservas activas del usuario para marcar visualmente en el carrusel de días
@@ -1273,7 +1363,7 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
       )}
 
       {/* SECCIÓN: Pendiente de Calificación para Citas Completadas */}
-      {pendingReviewAppointments.length > 0 && (
+      {pendingRatings.length > 0 && (
         <section className="rounded-2xl border border-amber-500/50 bg-gradient-to-br from-[#181d2c] via-[#121624] to-[#151a2b] p-5 sm:p-6 shadow-xl shadow-amber-950/30 space-y-4 animate-in fade-in duration-300">
           <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
             <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
@@ -1302,7 +1392,7 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
           )}
 
           <div className="space-y-3">
-            {pendingReviewAppointments.map((apt) => {
+            {pendingRatings.map((apt) => {
               const currentStars = selectedRatingByApt[apt.id] || 5;
               const isSubmitting = isSubmittingRating[apt.id] || false;
 
@@ -2258,12 +2348,12 @@ export const ClientBookingFlow: React.FC<ClientBookingFlowProps> = ({
             </div>
           ) : availableSlots.length === 0 ? (
             <div className="text-center py-8 text-slate-400">
-              <Calendar className="w-8 h-8 mx-auto text-slate-600 mb-2" />
-              <p className="text-sm font-medium text-slate-300">
-                {currentBarber.name} no atiende en esta fecha.
+              <Calendar className="w-8 h-8 mx-auto text-amber-400 mb-2" />
+              <p className="text-sm font-bold text-white">
+                Día de Descanso Programado
               </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Por favor selecciona otro día en el selector superior.
+              <p className="text-xs text-slate-400 mt-1">
+                {currentBarber.name} no atiende en esta fecha. Por favor selecciona otro día en el selector superior.
               </p>
             </div>
           ) : (

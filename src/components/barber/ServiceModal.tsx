@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Sparkles, Scissors, Clock, DollarSign } from 'lucide-react';
 import { Service, ServiceCategory } from '../../types';
 import { formatCurrency } from '../../utils/dateUtils';
@@ -52,13 +53,24 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        const stillOpen = document.querySelectorAll('[data-modal-open="true"]').length;
+        if (stillOpen <= 1) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -89,9 +101,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     ? SERVICE_PRICE_OPTIONS
     : [...SERVICE_PRICE_OPTIONS, price].sort((a, b) => a - b);
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      data-modal-open="true"
+      className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -99,7 +112,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       }}
     >
       <div 
-        className="bg-[#0f121a] border border-amber-500/40 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col"
+        className="bg-[#0f121a] border border-amber-500/40 rounded-2xl w-full max-w-lg shadow-2xl max-h-[88dvh] overflow-y-auto flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -236,4 +249,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

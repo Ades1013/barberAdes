@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, QrCode, Download, Copy, Check, ExternalLink, Share2, Sparkles } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Barber } from '../../types';
@@ -50,13 +51,24 @@ export const BarberQrModal: React.FC<BarberQrModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        const stillOpen = document.querySelectorAll('[data-modal-open="true"]').length;
+        if (stillOpen <= 1) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -87,9 +99,12 @@ export const BarberQrModal: React.FC<BarberQrModalProps> = ({
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-sm bg-[#0d131f] border border-amber-500/40 rounded-3xl p-6 text-slate-100 shadow-2xl animate-in zoom-in-95 duration-200">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+    >
+      <div className="relative w-full max-w-sm bg-[#0d131f] border border-amber-500/40 rounded-3xl p-6 text-slate-100 shadow-2xl max-h-[88dvh] overflow-y-auto animate-in zoom-in-95 duration-200">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
@@ -194,4 +209,6 @@ export const BarberQrModal: React.FC<BarberQrModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

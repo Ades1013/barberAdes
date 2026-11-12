@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Settings, Clock, Coffee, Calendar, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { Barber } from '../../types';
 import { storageService } from '../../services/storageService';
@@ -702,11 +703,14 @@ export const BarberAvailabilitySettings: React.FC<BarberAvailabilitySettingsProp
     await executeSave();
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+    >
       <form
         onSubmit={handleSave}
-        className="flex flex-col w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl bg-[#0B0F17] border border-slate-800 shadow-2xl text-slate-100"
+        className="flex flex-col w-full max-w-lg max-h-[88dvh] overflow-y-auto rounded-2xl bg-[#0B0F17] border border-slate-800 shadow-2xl text-slate-100"
       >
         {/* Cabecera integrada en el scroll */}
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0B0F17]">
@@ -1167,7 +1171,7 @@ export const BarberAvailabilitySettings: React.FC<BarberAvailabilitySettingsProp
         {/* Modal de Confirmación Inmediata para Día de Descanso con Citas Programadas */}
         {showRestConfirmModal && conflictingAppointments.length > 0 && (
           <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-[#12151b] border border-amber-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="bg-[#12151b] border border-amber-500/50 rounded-2xl max-w-md w-full max-h-[88dvh] overflow-y-auto p-6 shadow-2xl animate-in zoom-in-95 duration-200 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
                   <AlertCircle className="w-5 h-5" />
@@ -1267,4 +1271,6 @@ export const BarberAvailabilitySettings: React.FC<BarberAvailabilitySettingsProp
         )}
       </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

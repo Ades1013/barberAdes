@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, User, Mail, Phone, ShieldCheck, Lock, CheckCircle2, AlertCircle, Save } from 'lucide-react';
 import { User as UserType } from '../../types';
 import { PhoneInputWithCountry, validatePhoneDigits } from '../common/PhoneInputWithCountry';
@@ -47,14 +48,24 @@ export const ClientDataModal: React.FC<ClientDataModalProps> = ({
   }, [currentUser, isOpen]);
 
   useEffect(() => {
+    if (!isOpen || !currentUser) return;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        const stillOpen = document.querySelectorAll('[data-modal-open="true"]').length;
+        if (stillOpen <= 1) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
+  }, [isOpen, currentUser, onClose]);
 
   if (!isOpen || !currentUser) return null;
 
@@ -147,9 +158,12 @@ export const ClientDataModal: React.FC<ClientDataModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#0b0f17] border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl text-slate-100 flex flex-col max-h-[90vh]">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200"
+    >
+      <div className="bg-[#0b0f17] border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl text-slate-100 flex flex-col max-h-[88dvh]">
         {/* Header integrado */}
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/80">
           <div className="flex items-center gap-2.5">
@@ -278,4 +292,6 @@ export const ClientDataModal: React.FC<ClientDataModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

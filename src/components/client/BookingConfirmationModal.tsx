@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCircle2, Calendar, User, Scissors, MessageCircle, Download, Copy, Check, X, Tag } from 'lucide-react';
 import { Barber, Appointment } from '../../types';
 import {
@@ -51,6 +52,21 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  React.useEffect(() => {
+    if (appointment) {
+      document.body.style.overflow = 'hidden';
+    } else if (!document.querySelector('[data-modal-open="true"]')) {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      setTimeout(() => {
+        if (!document.querySelector('[data-modal-open="true"]')) {
+          document.body.style.overflow = '';
+        }
+      }, 0);
+    };
+  }, [appointment]);
+
   if (!appointment) return null;
 
   // 1. Código de Reserva normalizado a formato #CO - 000000 (o código ISO correspondiente)
@@ -91,9 +107,12 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
     }, 100);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-[#12151b] border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-slate-100 shadow-2xl">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+    >
+      <div className="relative w-full max-w-lg max-h-[88dvh] overflow-y-auto bg-[#12151b] border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-slate-100 shadow-2xl">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -230,6 +249,8 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
 
 // Alias export for alternate component name BookingSuccessModal

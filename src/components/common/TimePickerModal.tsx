@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Clock, Check } from 'lucide-react';
 
 export interface TimePickerModalProps {
@@ -124,6 +125,21 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else if (!document.querySelector('[data-modal-open="true"]')) {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      setTimeout(() => {
+        if (!document.querySelector('[data-modal-open="true"]')) {
+          document.body.style.overflow = '';
+        }
+      }, 0);
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Cálculo en tiempo real de formato 24h
@@ -151,13 +167,14 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
     onClose();
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      data-modal-open="true"
+      className="fixed inset-0 z-[130] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm bg-[#12151b] border border-amber-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150 text-slate-100"
+        className="w-full max-w-sm max-h-[88dvh] overflow-y-auto bg-[#12151b] border border-amber-500/30 rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-150 text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header del Selector */}
@@ -347,4 +364,6 @@ export const TimePickerModal: React.FC<TimePickerModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Ban, Clock, Calendar, AlertCircle, ChevronLeft, ChevronRight, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Barber, BlockedSlot, Appointment } from '../../types';
 import { storageService } from '../../services/storageService';
 import { realtimeService } from '../../services/realtimeService';
-import { formatDateLabel, formatTimeTo12h, normalizeTime, normalizeTimeTo24h } from '../../utils/dateUtils';
+import { formatDateLabel, formatTimeTo12h, normalizeTime, normalizeTimeTo24h, normalizeWorkingDaysToNumbers } from '../../utils/dateUtils';
 import { TimePickerModal } from '../common/TimePickerModal';
 
 interface BlockSlotModalProps {
@@ -96,9 +97,22 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
     if (targetDate) {
       const [y, m, d] = targetDate.split('-').map(Number);
       const dayOfWeek = new Date(y, m - 1, d).getDay();
-      specialForDate =
-        specialList.find((s: any) => s && s.date === targetDate) ||
-        specialList.find((s: any) => s && !s.date && Number(s.dayOfWeek) === dayOfWeek);
+      const rawWorkingDays =
+        wh.workingDays ||
+        (barber?.schedule as any)?.working_days ||
+        (barber?.schedule as any)?.work_days ||
+        (barber as any)?.working_days;
+      const rawWorkingDaysText =
+        barber?.workingDaysText ||
+        barber?.workingDays ||
+        barber?.schedule?.workingDays ||
+        'Lunes a Sábado';
+      const workingDaysList = normalizeWorkingDaysToNumbers(rawWorkingDays, String(rawWorkingDaysText));
+      if (workingDaysList.includes(dayOfWeek)) {
+        specialForDate =
+          specialList.find((s: any) => s && s.date === targetDate) ||
+          specialList.find((s: any) => s && !s.date && Number(s.dayOfWeek) === dayOfWeek);
+      }
     }
     const open24 = normalizeTimeTo24h(
       specialForDate?.start || wh.start || barber?.openTime || (barber?.schedule as any)?.openTime || '09:00',
@@ -218,6 +232,22 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, activePicker, isDatePickerOpen, onClose]);
+
+  // Bloqueo de scroll del fondo mientras el modal esté abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else if (!document.querySelector('[data-modal-open="true"]')) {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      setTimeout(() => {
+        if (!document.querySelector('[data-modal-open="true"]')) {
+          document.body.style.overflow = '';
+        }
+      }, 0);
+    };
+  }, [isOpen]);
 
   // Cálculo automático de intervalos de 30 minutos comprendidos en el rango
   const computedSlots = useMemo(() => {
@@ -361,9 +391,12 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-[#12151b] border border-amber-500/30 rounded-2xl p-6 text-slate-100 shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+    >
+      <div className="relative w-full max-w-lg bg-[#12151b] border border-amber-500/30 rounded-2xl p-6 text-slate-100 shadow-2xl max-h-[88dvh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
@@ -699,4 +732,6 @@ export const BlockSlotModal: React.FC<BlockSlotModalProps> = ({
       />
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

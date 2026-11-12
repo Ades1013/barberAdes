@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ShieldCheck, Mail, Lock, User, ArrowRight, ArrowLeft, Loader2, Eye, EyeOff, RefreshCw, CheckCircle2, KeyRound } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { storageService } from '../../services/storageService';
@@ -152,16 +153,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     return () => unsubRecovery();
   }, []);
 
-  // Soporte global de tecla Escape (Esc)
+  // Soporte global de tecla Escape (Esc) y bloqueo de scroll del fondo
   React.useEffect(() => {
     if (!isOpen) return;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         handleModalClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        const stillOpen = document.querySelectorAll('[data-modal-open="true"]').length;
+        if (stillOpen <= 1) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
   }, [isOpen, viewMode]);
 
   // Sincronización automática de sesión tras autenticación en popup de Google (no cerrar si está en update_password)
@@ -567,9 +579,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       error.toLowerCase().includes('not confirmed') ||
       error.toLowerCase().includes('verificar tu cuenta'));
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-x-hidden">
-      <div className="relative w-[92vw] sm:w-full sm:max-w-md bg-[#12151b] border border-amber-500/30 rounded-2xl p-4 sm:p-6 text-slate-100 shadow-2xl max-h-[92vh] overflow-y-auto overflow-x-hidden min-w-0">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-x-hidden"
+    >
+      <div className="relative w-[92vw] sm:w-full sm:max-w-md bg-[#12151b] border border-amber-500/30 rounded-2xl p-4 sm:p-6 text-slate-100 shadow-2xl max-h-[88dvh] overflow-y-auto overflow-x-hidden min-w-0">
         {/* Close Button */}
         <button
           onClick={handleModalClose}
@@ -1187,5 +1202,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
 

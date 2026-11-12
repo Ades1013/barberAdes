@@ -454,9 +454,37 @@ export function generateDailySlots(
     return isSameDate && isSameBarber && apt.status !== 'cancelled';
   });
 
-  // Requisito 3: Soporte para Horario Especial por Día Específico o Fecha Puntual
+  // Compatibilidad bidireccional entre formatos de días laborales:
+  // Admite tanto índices numéricos [1, 2, 3, 4, 5, 6] como cadenas de texto ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'] o 'Lunes a Sábado'
+  const rawWorkingDays =
+    barber?.workingHours?.workingDays ||
+    (barber as any)?.schedule?.working_days ||
+    (barber as any)?.schedule?.work_days ||
+    (barber as any)?.schedule?.workingDaysArray ||
+    (barber as any)?.working_days;
+
+  const rawWorkingDaysText =
+    barber?.workingDaysText ||
+    barber?.workingDays ||
+    barber?.schedule?.workingDays ||
+    (barber as any)?.schedule?.working_days_text ||
+    'Lunes a Sábado';
+
+  const workingDaysList = normalizeWorkingDaysToNumbers(rawWorkingDays, String(rawWorkingDaysText));
+
+  // Prioridad estricta de Días de Descanso sobre Excepciones de Horario:
+  // Validar PRIMERO si el día de la semana está activo en "Días Laborales".
+  // Si el día está desmarcado como descanso, mostrar siempre "Día de Descanso Programado" y bloquear reservas,
+  // incluso si existe una "Excepción Activa" creada previamente para esa fecha puntual.
+  if (!workingDaysList.includes(dayOfWeek)) {
+    return [];
+  }
+
+  // Requisito 3: Soporte para Horario Especial por Día Específico o Fecha Puntual (solo aplicable si el día de la semana es un día laboral activo)
   let specialSchedules: any[] =
     barber?.workingHours?.specialDaySchedules ||
+    (barber?.schedule as any)?.exceptions ||
+    (barber?.schedule as any)?.special_hours ||
     (barber as any)?.specialDaySchedules ||
     (barber as any)?.special_day_schedules ||
     [];
@@ -492,29 +520,7 @@ export function generateDailySlots(
     )
   );
 
-  // Compatibilidad bidireccional entre formatos de días laborales:
-  // Admite tanto índices numéricos [1, 2, 3, 4, 5, 6] como cadenas de texto ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'] o 'Lunes a Sábado'
-  const rawWorkingDays =
-    barber?.workingHours?.workingDays ||
-    (barber as any)?.schedule?.working_days ||
-    (barber as any)?.schedule?.work_days ||
-    (barber as any)?.schedule?.workingDaysArray ||
-    (barber as any)?.working_days;
-
-  const rawWorkingDaysText =
-    barber?.workingDaysText ||
-    barber?.workingDays ||
-    barber?.schedule?.workingDays ||
-    (barber as any)?.schedule?.working_days_text ||
-    'Lunes a Sábado';
-
-  const workingDaysList = normalizeWorkingDaysToNumbers(rawWorkingDays, String(rawWorkingDaysText));
-
-  // Comprobar si hoy es día laboral para el barbero o si tiene una excepción
-  const isWorkingDay = (workingDaysList.includes(dayOfWeek) || (Boolean(specialForToday) && !isSpecialClosed)) && !isSpecialClosed;
-
-  // Si no trabaja este día, pero hay citas agendadas, NO ocultar las citas
-  if (!isWorkingDay && dayAppointments.length === 0) {
+  if (isSpecialClosed) {
     return [];
   }
 

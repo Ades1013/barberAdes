@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Barber, Service, SocialLink, SocialPlatform } from '../../types';
 import { storageService } from '../../services/storageService';
 import { realtimeService } from '../../services/realtimeService';
@@ -443,8 +444,12 @@ export const BarberBusinessProfileModal: React.FC<BarberBusinessProfileModalProp
     startPanY: 0,
   });
 
-  // Requisito 2: Soporte global de tecla Escape (ESC) en el teclado de la PC
+  // Requisito 2: Soporte global de tecla Escape (ESC) y bloqueo de scroll del fondo
   useEffect(() => {
+    if (!isOpen) return;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (activeTimePickerField) {
@@ -468,8 +473,16 @@ export const BarberBusinessProfileModal: React.FC<BarberBusinessProfileModalProp
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, isServiceModalOpen, isCropperOpen, isPreviewOpen, activeTimePickerField]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        const stillOpen = document.querySelectorAll('[data-modal-open="true"]').length;
+        if (stillOpen <= 1) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
+  }, [isOpen, onClose, isServiceModalOpen, isCropperOpen, isPreviewOpen, activeTimePickerField]);
 
   // Requisito 2a & 2b: Cargar estrictamente desde Supabase por user_id al abrir el modal
   useEffect(() => {
@@ -1555,12 +1568,17 @@ export const BarberBusinessProfileModal: React.FC<BarberBusinessProfileModalProp
     );
   }
 
+  if (!isOpen) return null;
+
   // -------------------------------------------------------------
   // RENDER: FORMULARIO PRINCIPAL DE EDICIÓN Y CROPPING
   // -------------------------------------------------------------
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div className="flex flex-col max-h-[92vh] overflow-y-auto rounded-2xl bg-[#0B0F17] border border-slate-800 w-full max-w-2xl my-auto shadow-2xl text-slate-100">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md"
+    >
+      <div className="flex flex-col max-h-[88dvh] overflow-y-auto rounded-2xl bg-[#0B0F17] border border-slate-800 w-full max-w-2xl my-auto shadow-2xl text-slate-100">
         {/* Cabecera integrada en el scroll */}
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/80">
           <div className="flex items-center gap-2 sm:gap-3">
@@ -2316,8 +2334,11 @@ export const BarberBusinessProfileModal: React.FC<BarberBusinessProfileModalProp
       {/* MODAL DE ENCUADRE Y RECORTE DE FOTO RECTANGULAR (Requisito 1) */}
       {/* ------------------------------------------------------------- */}
       {isCropperOpen && rawImageToCrop && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-amber-500/40 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+        <div
+          data-modal-open="true"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+        >
+          <div className="bg-slate-900 border border-amber-500/40 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[88dvh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Camera className="w-4 h-4 text-amber-400" />
@@ -2482,4 +2503,6 @@ export const BarberBusinessProfileModal: React.FC<BarberBusinessProfileModalProp
       )}
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

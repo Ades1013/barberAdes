@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, UserPlus, Scissors, Clock, DollarSign, User, Phone, Calendar, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { Barber, Service, Appointment } from '../../types';
 import { storageService } from '../../services/storageService';
 import { realtimeService } from '../../services/realtimeService';
-import { formatCurrency, formatDateLabel, formatTimeTo12h, generateNextBookingCode, normalizeTime, normalizeTimeTo24h, formatPhoneForWhatsApp } from '../../utils/dateUtils';
+import { formatCurrency, formatDateLabel, formatTimeTo12h, generateNextBookingCode, normalizeTime, normalizeTimeTo24h, formatPhoneForWhatsApp, normalizeWorkingDaysToNumbers } from '../../utils/dateUtils';
 import { PhoneInputWithCountry, validatePhoneDigits } from '../common/PhoneInputWithCountry';
 import { TimePickerModal } from '../common/TimePickerModal';
 
@@ -79,9 +80,22 @@ export const AddWalkinModal: React.FC<AddWalkinModalProps> = ({
     if (selectedDate) {
       const [yy, mm, dd] = selectedDate.split('-').map(Number);
       const dayOfWeek = new Date(yy, mm - 1, dd).getDay();
-      specialForDate =
-        specialList.find((s) => s && s.date === selectedDate) ||
-        specialList.find((s) => s && !s.date && Number(s.dayOfWeek) === dayOfWeek);
+      const rawWorkingDays =
+        wh.workingDays ||
+        (barber?.schedule as any)?.working_days ||
+        (barber?.schedule as any)?.work_days ||
+        (barber as any)?.working_days;
+      const rawWorkingDaysText =
+        barber?.workingDaysText ||
+        barber?.workingDays ||
+        barber?.schedule?.workingDays ||
+        'Lunes a Sábado';
+      const workingDaysList = normalizeWorkingDaysToNumbers(rawWorkingDays, String(rawWorkingDaysText));
+      if (workingDaysList.includes(dayOfWeek)) {
+        specialForDate =
+          specialList.find((s) => s && s.date === selectedDate) ||
+          specialList.find((s) => s && !s.date && Number(s.dayOfWeek) === dayOfWeek);
+      }
     }
 
     const o24 = normalizeTimeTo24h(
@@ -280,6 +294,22 @@ export const AddWalkinModal: React.FC<AddWalkinModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isTimePickerOpen, isDatePickerOpen, onClose]);
 
+  // Bloqueo de scroll del fondo mientras el modal esté abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else if (!document.querySelector('[data-modal-open="true"]')) {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      setTimeout(() => {
+        if (!document.querySelector('[data-modal-open="true"]')) {
+          document.body.style.overflow = '';
+        }
+      }, 0);
+    };
+  }, [isOpen]);
+
   const selectedService: Service = activeServices.find((s) => s.id === selectedServiceId) || activeServices[0] || {
     id: 's-presencial',
     name: 'Servicio Presencial',
@@ -437,9 +467,12 @@ export const AddWalkinModal: React.FC<AddWalkinModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-      <div className="w-full max-w-lg bg-[#12151b] border border-amber-500/30 rounded-2xl p-5 sm:p-6 text-slate-100 shadow-2xl my-auto max-h-[92vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
+    >
+      <div className="w-full max-w-lg bg-[#12151b] border border-amber-500/30 rounded-2xl p-5 sm:p-6 text-slate-100 shadow-2xl my-auto max-h-[88dvh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
         {/* Cabecera integrada con scroll libre */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-2.5">
@@ -714,4 +747,6 @@ export const AddWalkinModal: React.FC<AddWalkinModalProps> = ({
       />
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

@@ -80,8 +80,33 @@ export function rowToAppointment(row: any): Appointment {
   const unifiedBarberId = resolveUnifiedBarberId(rawBarberId);
   const cleanClientEmail = String(row.client_email || row.clientEmail || '').trim().toLowerCase() || undefined;
 
+  const rowIdStr = String(row.id || `apt-${Date.now()}`);
+  let isReviewedLocally = false;
+  let isDismissedLocally = false;
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const revRaw = localStorage.getItem('barbersync_reviewed_apts');
+      if (revRaw && JSON.parse(revRaw).includes(rowIdStr)) isReviewedLocally = true;
+      const disRaw = localStorage.getItem('barbersync_dismissed_reviews');
+      if (disRaw && JSON.parse(disRaw).includes(rowIdStr)) isDismissedLocally = true;
+    } catch {}
+  }
+
+  const ratedVal = Boolean(
+    row.rated === true ||
+    row.reviewCompleted === true ||
+    row.review_completed === true ||
+    (row.rating !== undefined && row.rating !== null && Number(row.rating) > 0) ||
+    isReviewedLocally
+  );
+  const dismissedVal = Boolean(
+    row.rating_dismissed === true ||
+    row.ratingDismissed === true ||
+    isDismissedLocally
+  );
+
   return {
-    id: String(row.id || `apt-${Date.now()}`),
+    id: rowIdStr,
     code: codeVal,
     clientId: String(row.client_id || row.clientId || 'usr-guest'),
     client_id: String(row.client_id || row.clientId || 'usr-guest'),
@@ -117,6 +142,10 @@ export function rowToAppointment(row: any): Appointment {
     createdAt: row.created_at || row.createdAt || new Date().toISOString(),
     source: sourceVal,
     type: typeVal,
+    rated: ratedVal,
+    rating: row.rating !== undefined && row.rating !== null ? Number(row.rating) : undefined,
+    review: row.review || row.review_comment || row.reviewComment || undefined,
+    rating_dismissed: dismissedVal,
   };
 }
 
@@ -1987,6 +2016,10 @@ export const storageService = {
           time: normalizedRemoteTime || localApt.time,
           appointment_time: normalizedRemoteTime || localApt.time,
           status: resolvedStatus,
+          rated: Boolean(localApt.rated || remoteApt.rated || (localApt as any).reviewCompleted || (remoteApt as any).reviewCompleted),
+          rating: remoteApt.rating ?? localApt.rating,
+          review: remoteApt.review ?? localApt.review,
+          rating_dismissed: Boolean(localApt.rating_dismissed || remoteApt.rating_dismissed),
         });
       } else {
         // Si el ID es diferente, comprobar únicamente por código idéntico (NO sobrescribir por horario)
@@ -2016,6 +2049,10 @@ export const storageService = {
             time: normalizedRemoteTime || localApt.time,
             appointment_time: normalizedRemoteTime || localApt.time,
             status: resolvedStatus,
+            rated: Boolean(localApt.rated || remoteApt.rated || (localApt as any).reviewCompleted || (remoteApt as any).reviewCompleted),
+            rating: remoteApt.rating ?? localApt.rating,
+            review: remoteApt.review ?? localApt.review,
+            rating_dismissed: Boolean(localApt.rating_dismissed || remoteApt.rating_dismissed),
           });
         } else {
           // Es un turno remoto nuevo con ID único propio (permite coexistencia de cancelados y completados en la misma hora)
@@ -2904,7 +2941,9 @@ export const storageService = {
       if (a.id === appointmentId) {
         return {
           ...a,
+          rated: true,
           rating,
+          review: comment ?? '',
           reviewComment: comment,
           reviewCompleted: true,
         };
@@ -2920,7 +2959,30 @@ export const storageService = {
       localStorage.setItem('barbersync_reviewed_apts', JSON.stringify(Array.from(reviewed)));
     } catch {}
 
-    // 3. Persistir en Supabase
+    // 3. Persistir inmediatamente en Supabase (public.appointments y public.barbers)
+    try {
+      const { error: aptUpdateError } = await supabase
+        .from('appointments')
+        .update({
+          rated: true,
+          rating: rating,
+          review: comment ?? null,
+        })
+        .eq('id', appointmentId);
+
+      if (aptUpdateError) {
+        await supabase
+          .from('appointments')
+          .update({
+            rated: true,
+            rating: rating,
+          })
+          .eq('id', appointmentId);
+      }
+    } catch (err) {
+      console.warn('Error al guardar calificación de cita en Supabase:', err);
+    }
+
     try {
       const targetIds = [cleanBarberId, cleanBarberId.replace(/^b-/, '')].filter(Boolean);
       for (const tId of targetIds) {
@@ -2934,18 +2996,6 @@ export const storageService = {
       }
     } catch (err) {
       console.warn('Error al actualizar rating en Supabase public.barbers:', err);
-    }
-
-    try {
-      await supabase
-        .from('appointments')
-        .update({
-          rating,
-          review_comment: comment,
-        })
-        .eq('id', appointmentId);
-    } catch (err) {
-      console.warn('Error al guardar calificación de cita en Supabase:', err);
     }
 
     // 4. Emitir eventos en tiempo real
@@ -2969,14 +3019,34 @@ export const storageService = {
     }
   },
 
-  dismissAppointmentReview(appointmentId: string): void {
-    if (typeof localStorage === 'undefined') return;
+  async dismissAppointmentReview(appointmentId: string): Promise<void> {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('barbersync_dismissed_reviews');
+        const set = raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+        set.add(appointmentId);
+        localStorage.setItem('barbersync_dismissed_reviews', JSON.stringify(Array.from(set)));
+      } catch {}
+    }
+
+    // Actualizar en caché local de citas
     try {
-      const raw = localStorage.getItem('barbersync_dismissed_reviews');
-      const set = raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
-      set.add(appointmentId);
-      localStorage.setItem('barbersync_dismissed_reviews', JSON.stringify(Array.from(set)));
+      const localApts = this.getCachedAppointments();
+      const updatedApts = localApts.map((a) =>
+        a.id === appointmentId ? { ...a, rating_dismissed: true } : a
+      );
+      this.saveAppointments(updatedApts);
     } catch {}
+
+    // Persistir descarte permanente en Supabase (public.appointments)
+    try {
+      await supabase
+        .from('appointments')
+        .update({ rating_dismissed: true })
+        .eq('id', appointmentId);
+    } catch (err) {
+      console.warn('Error al marcar rating_dismissed en Supabase:', err);
+    }
   },
 
   getDismissedReviewIds(): Set<string> {

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Barber, Service, Appointment, BlockedSlot, User as UserType } from '../../types';
 import { getNextDays, generateDailySlots, formatCurrency, formatDateLabel, formatTimeTo12h, formatScheduleDisplay, TimeSlotStatus, formatBookingCode, normalizeTime, normalizeTimeTo24h, formatPhoneForWhatsApp, hasAppointmentStarted } from '../../utils/dateUtils';
 import { storageService, rowToAppointment } from '../../services/storageService';
@@ -888,6 +889,20 @@ export const BarberDashboard: React.FC<BarberDashboardProps> = ({
     onModalStateChange?.(isAnyDashboardModalActive);
   }, [isAnyDashboardModalActive, onModalStateChange]);
 
+  // Bloqueo de scroll del fondo para los modales propios del Dashboard (quickBlockSlot y appointmentToCancel)
+  useEffect(() => {
+    if (quickBlockSlot || appointmentToCancel) {
+      document.body.style.overflow = 'hidden';
+    } else if (!isSettingsModalOpen && !isWalkinModalOpen && !isBlockModalOpen) {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      if (!document.querySelector('[data-modal-open="true"]')) {
+        document.body.style.overflow = '';
+      }
+    };
+  }, [quickBlockSlot, appointmentToCancel, isSettingsModalOpen, isWalkinModalOpen, isBlockModalOpen]);
+
   // Requisito 2: Listener global de teclado (keydown) para cerrar modal activo con tecla Escape (Esc)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1322,7 +1337,7 @@ export const BarberDashboard: React.FC<BarberDashboardProps> = ({
             </div>
 
             {apt.clientNotes && (
-              <p className="text-[11px] text-slate-400 mt-1 italic line-clamp-1">
+              <p className="text-[11px] text-slate-400 mt-1 italic break-words whitespace-normal">
                 Nota: "{apt.clientNotes}"
               </p>
             )}
@@ -1950,6 +1965,48 @@ export const BarberDashboard: React.FC<BarberDashboardProps> = ({
               </div>
             )
           )}
+
+          {/* Tarjetas de horarios bloqueados manualmente en Lista Cronológica (texto completo con salto de línea natural) */}
+          {timelineTab === 'active' && daySlots.some((s) => s.status === 'blocked' && !s.isLunchBreak) && (
+            <div className="pt-3 border-t border-slate-800/80 space-y-2.5">
+              <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Ban className="w-3.5 h-3.5" />
+                <span>Horarios Bloqueados ({daySlots.filter((s) => s.status === 'blocked' && !s.isLunchBreak).length})</span>
+              </h3>
+              <div className="space-y-2">
+                {daySlots
+                  .filter((s) => s.status === 'blocked' && !s.isLunchBreak)
+                  .map((slot) => (
+                    <div
+                      key={`timeline-blocked-${slot.time}`}
+                      className="p-3.5 rounded-xl border border-amber-500/50 bg-amber-950/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs sm:text-sm font-bold px-2 py-0.5 rounded-md bg-slate-950 border border-amber-500/40 text-amber-400">
+                            {formatTimeTo12h(slot.time)}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-950/70 text-amber-400 border border-amber-500/50">
+                            Bloqueado
+                          </span>
+                        </div>
+                        <p className="text-xs text-amber-200 font-medium leading-relaxed break-words whitespace-normal">
+                          {resolveSlotBlockedReason(slot) || ''}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleUnblockSlot(slot)}
+                        className="self-start sm:self-center shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-amber-500/40 text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        <Unlock className="w-3.5 h-3.5" />
+                        <span>Desbloquear</span>
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* Real-Time Grid Matrix View */
@@ -2120,14 +2177,14 @@ export const BarberDashboard: React.FC<BarberDashboardProps> = ({
                       </div>
                     )}
 
-                    {/* Requisito 2: Motivo específico en el cuerpo interno sin sustituir la etiqueta BLOQUEADO (Límite 30 caracteres) */}
+                    {/* Motivo específico completo con salto de línea natural sin truncar */}
                     {isBlocked && (
                       <div className="mt-1.5 min-w-0">
                         <p
-                          className="text-[11px] text-amber-300 font-medium leading-snug line-clamp-2 max-w-full break-words"
+                          className="text-[11px] text-amber-300 font-medium leading-snug max-w-full break-words whitespace-normal"
                           title={resolveSlotBlockedReason(slot)}
                         >
-                          {(resolveSlotBlockedReason(slot) || '').slice(0, 30)}
+                          {resolveSlotBlockedReason(slot) || ''}
                         </p>
                         <button
                           onClick={() => handleUnblockSlot(slot)}
@@ -2176,81 +2233,87 @@ export const BarberDashboard: React.FC<BarberDashboardProps> = ({
       )}
 
       {/* Requisito 3: Modal de Bloqueo Rápido para turnos individuales */}
-      {quickBlockSlot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-[#12151b] border border-amber-500/40 rounded-2xl p-5 text-slate-100 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
-                  <Ban className="w-4 h-4" />
+      {quickBlockSlot &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            data-modal-open="true"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          >
+            <div className="relative w-full max-w-sm max-h-[88dvh] overflow-y-auto bg-[#12151b] border border-amber-500/40 rounded-2xl p-5 text-slate-100 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
+                    <Ban className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Bloqueo Rápido de Turno</h3>
+                    <p className="text-[11px] text-amber-400 font-medium">
+                      {formatDateLabel(quickBlockSlot.date)} · {formatTimeTo12h(quickBlockSlot.time)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Bloqueo Rápido de Turno</h3>
-                  <p className="text-[11px] text-amber-400 font-medium">
-                    {formatDateLabel(quickBlockSlot.date)} · {formatTimeTo12h(quickBlockSlot.time)}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setQuickBlockSlot(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  aria-label="Cerrar modal"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setQuickBlockSlot(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                aria-label="Cerrar modal"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-300">
-                Motivo del Bloqueo:
-              </label>
-              <select
-                value={quickBlockReason}
-                onChange={(e) => setQuickBlockReason(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500 transition-colors shadow-xs cursor-pointer"
-              >
-                <option value="Descanso / Almuerzo">Descanso / Almuerzo</option>
-                <option value="Trámite o Turno Médico">Trámite o Turno Médico</option>
-                <option value="Mantenimiento y Afilado de Navajas">Mantenimiento y Afilado de Navajas</option>
-                <option value="Pausa Personal">Pausa Personal</option>
-                <option value="Capacitación / Masterclass">Capacitación / Masterclass</option>
-                <option value="Otro motivo...">Otro motivo...</option>
-              </select>
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-300">
+                  Motivo del Bloqueo:
+                </label>
+                <select
+                  value={quickBlockReason}
+                  onChange={(e) => setQuickBlockReason(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500 transition-colors shadow-xs cursor-pointer"
+                >
+                  <option value="Descanso / Almuerzo">Descanso / Almuerzo</option>
+                  <option value="Trámite o Turno Médico">Trámite o Turno Médico</option>
+                  <option value="Mantenimiento y Afilado de Navajas">Mantenimiento y Afilado de Navajas</option>
+                  <option value="Pausa Personal">Pausa Personal</option>
+                  <option value="Capacitación / Masterclass">Capacitación / Masterclass</option>
+                  <option value="Otro motivo...">Otro motivo...</option>
+                </select>
 
-              {quickBlockReason === 'Otro motivo...' && (
-                <input
-                  type="text"
-                  placeholder="Especifica el motivo..."
-                  value={quickBlockCustomReason}
-                  onChange={(e) => setQuickBlockCustomReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors shadow-xs"
-                  autoFocus
-                />
-              )}
-            </div>
+                {quickBlockReason === 'Otro motivo...' && (
+                  <input
+                    type="text"
+                    placeholder="Especifica el motivo..."
+                    value={quickBlockCustomReason}
+                    onChange={(e) => setQuickBlockCustomReason(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors shadow-xs"
+                    autoFocus
+                  />
+                )}
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => setQuickBlockSlot(null)}
-                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={isSavingQuickBlock}
-                onClick={handleConfirmQuickBlock}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-amber-950/40 cursor-pointer disabled:opacity-50"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>{isSavingQuickBlock ? 'Bloqueando...' : 'Confirmar Bloqueo'}</span>
-              </button>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setQuickBlockSlot(null)}
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingQuickBlock}
+                  onClick={handleConfirmQuickBlock}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-amber-950/40 cursor-pointer disabled:opacity-50"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>{isSavingQuickBlock ? 'Bloqueando...' : 'Confirmar Bloqueo'}</span>
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Block Slot Modal (Rango de Horarios) */}
       <BlockSlotModal
@@ -2293,65 +2356,71 @@ export const BarberDashboard: React.FC<BarberDashboardProps> = ({
 
 
       {/* Modal de Confirmación de Cancelación de Turno */}
-      {appointmentToCancel && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-[#12151b] border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-5 h-5" />
+      {appointmentToCancel &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            data-modal-open="true"
+            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          >
+            <div className="bg-[#12151b] border border-slate-800 rounded-2xl max-w-md w-full max-h-[88dvh] overflow-y-auto p-6 shadow-2xl animate-in zoom-in-95 duration-200 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    ¿Deseas cancelar y liberar este turno?
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Esta cancelación no reporta, penaliza ni bloquea al usuario; el horario quedará disponible inmediatamente para nuevos clientes o citas presenciales.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-white text-base">
-                  ¿Deseas cancelar y liberar este turno?
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Esta cancelación no reporta, penaliza ni bloquea al usuario; el horario quedará disponible inmediatamente para nuevos clientes o citas presenciales.
-                </p>
-              </div>
-            </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Cliente:</span>
-                <span className="font-bold text-white">{appointmentToCancel.clientName}</span>
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Cliente:</span>
+                  <span className="font-bold text-white">{appointmentToCancel.clientName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Servicio:</span>
+                  <span className="font-semibold text-slate-200">{appointmentToCancel.serviceName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Fecha y Horario:</span>
+                  <span className="font-mono font-bold text-amber-400">
+                    {formatDateLabel(appointmentToCancel.date)} · {formatTimeTo12h(appointmentToCancel.time)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Código de cita:</span>
+                  <span className="font-mono text-slate-300">
+                    {formatBookingCode(appointmentToCancel.code, 'CO')}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Servicio:</span>
-                <span className="font-semibold text-slate-200">{appointmentToCancel.serviceName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Fecha y Horario:</span>
-                <span className="font-mono font-bold text-amber-400">
-                  {formatDateLabel(appointmentToCancel.date)} · {formatTimeTo12h(appointmentToCancel.time)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Código de cita:</span>
-                <span className="font-mono text-slate-300">
-                  {formatBookingCode(appointmentToCancel.code, 'CO')}
-                </span>
-              </div>
-            </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setAppointmentToCancel(null)}
-                className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer shadow-xs"
-              >
-                No, volver
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmCancel}
-                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-colors shadow-lg shadow-rose-950/40 cursor-pointer"
-              >
-                Sí, Cancelar y Liberar Turno
-              </button>
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAppointmentToCancel(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+                >
+                  No, volver
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCancel}
+                  className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-colors shadow-lg shadow-rose-950/40 cursor-pointer"
+                >
+                  Sí, Cancelar y Liberar Turno
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Floating Undo Toast (Visible durante 8 segundos tras cancelar) */}
       {undoToast && (

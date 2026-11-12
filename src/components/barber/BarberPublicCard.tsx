@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Eye,
@@ -586,15 +587,26 @@ export const BarberPublicCard: React.FC<BarberPublicCardProps> = ({
   asModal = true,
 }) => {
   useEffect(() => {
-    if (!asModal || !onClose) return;
+    if (!asModal || !isOpen) return;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && onClose) {
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [asModal, onClose]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        const stillOpen = document.querySelectorAll('[data-modal-open="true"]').length;
+        if (stillOpen <= 1) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
+  }, [asModal, isOpen, onClose]);
 
   if (asModal && !isOpen) return null;
 
@@ -603,7 +615,7 @@ export const BarberPublicCard: React.FC<BarberPublicCardProps> = ({
     (typeof document !== 'undefined' && document.documentElement.classList.contains('light'));
 
   const cardContent = (
-    <div className="relative flex flex-col max-h-[90vh] overflow-y-auto rounded-2xl bg-[#0B0F17] border border-slate-800 w-full max-w-2xl my-6 shadow-2xl text-slate-100 transition-colors">
+    <div className="relative flex flex-col max-h-[88dvh] overflow-y-auto rounded-2xl bg-[#0B0F17] border border-slate-800 w-full max-w-2xl my-auto shadow-2xl text-slate-100 transition-colors">
       {/* Cabecera integrada en el desplazamiento (se desplaza junto con el resto del texto) */}
       <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/80">
         <div className="flex items-center gap-2.5">
@@ -672,15 +684,17 @@ export const BarberPublicCard: React.FC<BarberPublicCardProps> = ({
   );
 
   if (asModal) {
-    return (
+    const modalContent = (
       <div
-        className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 ${
+        data-modal-open="true"
+        className={`fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 ${
           isLight ? 'bg-slate-100/95' : 'bg-black/80'
-        } backdrop-blur-md overflow-y-auto animate-in fade-in duration-200`}
+        } backdrop-blur-md animate-in fade-in duration-200`}
       >
         {cardContent}
       </div>
     );
+    return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
   }
 
   return cardContent;

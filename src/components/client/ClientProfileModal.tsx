@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   User,
@@ -154,14 +155,24 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
   };
 
   useEffect(() => {
+    if (!isOpen || !client) return;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        const stillOpen = document.querySelectorAll('[data-modal-open="true"]').length;
+        if (stillOpen <= 1) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
+  }, [isOpen, client, onClose]);
 
   const clientAppointments = useMemo(() => {
     if (!client) return [];
@@ -291,9 +302,12 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
 
   const initial = client.name ? client.name.charAt(0).toUpperCase() : 'C';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-[#0d1527] border border-amber-500/40 rounded-2xl flex flex-col max-h-[90vh] overflow-hidden text-slate-100 shadow-2xl transition-colors">
+  const modalContent = (
+    <div
+      data-modal-open="true"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+    >
+      <div className="relative w-full max-w-lg bg-[#0d1527] border border-amber-500/40 rounded-2xl flex flex-col max-h-[88dvh] overflow-hidden text-slate-100 shadow-2xl transition-colors">
         
         {/* ÚNICO CONTENEDOR CON SCROLL */}
         <div className="overflow-y-auto flex-1 p-4 sm:p-5 space-y-5">
@@ -686,4 +700,6 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };

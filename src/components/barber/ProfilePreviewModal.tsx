@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Eye,
@@ -217,14 +218,26 @@ export const ProfilePreviewModal: React.FC<ProfilePreviewModalProps> = ({
   }, [isOpen, barber?.id, barber?.userId]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined') {
+        const stillOpen = document.querySelectorAll('[data-modal-open="true"]').length;
+        if (stillOpen <= 1) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -257,11 +270,14 @@ export const ProfilePreviewModal: React.FC<ProfilePreviewModalProps> = ({
     barber?.avatarUrl ||
     '';
 
-  return (
+  const modalContent = (
     // Contenedor overlay fijo sin scroll externo
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 ${isLight ? 'bg-slate-100/95' : 'bg-black/80'} backdrop-blur-md animate-in fade-in duration-200`}>
+    <div
+      data-modal-open="true"
+      className={`fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 ${isLight ? 'bg-slate-100/95' : 'bg-black/80'} backdrop-blur-md animate-in fade-in duration-200`}
+    >
       {/* Contenedor principal del modal: ÚNICO con overflow-y-auto */}
-      <div className="relative w-full max-w-lg bg-[#0d1527] border border-amber-500/40 rounded-2xl flex flex-col max-h-[90vh] overflow-y-auto text-slate-100 shadow-2xl transition-colors">
+      <div className="relative w-full max-w-lg bg-[#0d1527] border border-amber-500/40 rounded-2xl flex flex-col max-h-[88dvh] overflow-y-auto text-slate-100 shadow-2xl transition-colors">
         
         {/* Encabezado integrado directamente en el flujo libre de desplazamiento (sin fixed, sin sticky) */}
         <div className="p-4 sm:p-5 pb-3 border-b border-slate-800 flex items-center justify-between">
@@ -321,4 +337,6 @@ export const ProfilePreviewModal: React.FC<ProfilePreviewModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
